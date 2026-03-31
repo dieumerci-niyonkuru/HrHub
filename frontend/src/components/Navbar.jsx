@@ -1,12 +1,14 @@
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import Logo from "./Logo";
-import { motion } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useTheme } from "../contexts/ThemeContext";
+import { FiMenu, FiX, FiHome, FiInfo, FiMail, FiLogOut, FiSun, FiMoon } from "react-icons/fi";
 
 export default function Navbar() {
   const { user, logout } = useAuth();
+  const { darkMode, toggleTheme } = useTheme();
   const navigate = useNavigate();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -22,102 +24,72 @@ export default function Navbar() {
     navigate("/login");
   };
 
-  const navItems = [
-    { to: "/", label: "Home", icon: "🏠" },
-    { to: "/about", label: "About", icon: "ℹ️" },
-    { to: "/contact", label: "Contact", icon: "📧" },
+  const navLinks = [
+    { to: "/", label: "Home", icon: <FiHome /> },
+    { to: "/about", label: "About", icon: <FiInfo /> },
+    { to: "/contact", label: "Contact", icon: <FiMail /> },
   ];
 
-  const authItems = user ? [
-    { to: "/dashboard", label: "Dashboard", icon: "📊" },
-    { to: "/candidates", label: "Candidates", icon: "👥" },
-    { to: "/interviews", label: "Interviews", icon: "📅" },
-    { to: "/interviewers", label: "Interviewers", icon: "🎯" },
-    { to: "/my-interviews", label: "My Interviews", icon: "📋" },
-  ] : [];
-
   return (
-    <motion.nav
-      initial={{ y: -100 }}
-      animate={{ y: 0 }}
-      transition={{ duration: 0.5 }}
-      style={{
-        ...styles.navbar,
-        backgroundColor: scrolled ? "rgba(15, 23, 42, 0.95)" : "rgba(30, 41, 59, 0.95)",
-        backdropFilter: scrolled ? "blur(10px)" : "blur(5px)",
-        boxShadow: scrolled ? "0 4px 20px rgba(0,0,0,0.2)" : "none",
-        borderBottom: scrolled ? "1px solid rgba(249, 115, 22, 0.5)" : "1px solid rgba(249, 115, 22, 0.3)",
-      }}
-    >
+    <nav style={{ ...styles.navbar, backgroundColor: scrolled ? "#0f172a" : "#1e293b" }}>
       <div style={styles.container}>
-        <Link to="/" style={styles.logoLink}>
-          <Logo size="small" />
+        <Link to="/" style={styles.logo}>
           <span style={styles.logoText}>HR-Hub</span>
         </Link>
-        
-        <div style={styles.navLinks}>
-          {navItems.map(item => (
-            <motion.div
-              key={item.to}
-              whileHover={{ scale: 1.05, y: -2 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <Link to={item.to} style={styles.navLink}>
-                <span style={styles.navIcon}>{item.icon}</span>
-                {item.label}
-              </Link>
-            </motion.div>
-          ))}
-          
-          {user && authItems.map(item => (
-            <motion.div
-              key={item.to}
-              whileHover={{ scale: 1.05, y: -2 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <Link to={item.to} style={styles.navLink}>
-                <span style={styles.navIcon}>{item.icon}</span>
-                {item.label}
-              </Link>
-            </motion.div>
+
+        <div style={styles.desktopNav}>
+          {navLinks.map(link => (
+            <Link key={link.to} to={link.to} style={styles.navLink}>
+              {link.icon}
+              <span>{link.label}</span>
+            </Link>
           ))}
         </div>
-        
+
         <div style={styles.userSection}>
+          <button onClick={toggleTheme} style={styles.themeBtn}>
+            {darkMode ? <FiSun /> : <FiMoon />}
+          </button>
+          
           {user ? (
             <>
-              <motion.div
-                whileHover={{ scale: 1.05 }}
-                style={styles.userInfo}
-              >
+              <div style={styles.userInfo}>
                 <span style={styles.userAvatar}>{user.full_name?.[0] || user.email[0]}</span>
                 <span style={styles.userName}>{user.full_name?.split(" ")[0] || user.email.split("@")[0]}</span>
-              </motion.div>
-              <motion.button
-                whileHover={{ scale: 1.05, backgroundColor: "#dc2626" }}
-                whileTap={{ scale: 0.95 }}
-                onClick={handleLogout}
-                style={styles.logoutBtn}
-              >
-                Logout
-              </motion.button>
+              </div>
+              <button onClick={handleLogout} style={styles.logoutBtn}>
+                <FiLogOut /> Logout
+              </button>
             </>
           ) : (
             <div style={styles.authBtns}>
               <Link to="/login" style={styles.loginBtn}>Login</Link>
-              <motion.div
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <Link to="/register" style={styles.joinBtn}>
-                  ✨ Join Us
-                </Link>
-              </motion.div>
+              <Link to="/register" style={styles.registerBtn}>Join Us</Link>
             </div>
           )}
         </div>
+
+        <button style={styles.menuBtn} onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+          {mobileMenuOpen ? <FiX size={24} /> : <FiMenu size={24} />}
+        </button>
       </div>
-    </motion.nav>
+
+      {mobileMenuOpen && (
+        <div style={styles.mobileMenu}>
+          {navLinks.map(link => (
+            <Link
+              key={link.to}
+              to={link.to}
+              style={styles.mobileLink}
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              {link.icon}
+              <span>{link.label}</span>
+            </Link>
+          ))}
+        </div>
+      )}
+    </nav>
   );
 }
 
@@ -126,36 +98,30 @@ const styles = {
     position: "sticky",
     top: 0,
     zIndex: 1000,
+    borderBottom: "1px solid #f97316",
     transition: "all 0.3s ease",
   },
   container: {
     maxWidth: "1200px",
     margin: "0 auto",
-    padding: "0.8rem 2rem",
+    padding: "1rem 2rem",
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
     flexWrap: "wrap",
-    gap: "1rem",
   },
-  logoLink: {
-    display: "flex",
-    alignItems: "center",
-    gap: "0.75rem",
+  logo: {
     textDecoration: "none",
   },
   logoText: {
     fontSize: "1.5rem",
     fontWeight: "bold",
-    background: "linear-gradient(135deg, #f97316, #fb923c)",
-    WebkitBackgroundClip: "text",
-    WebkitTextFillColor: "transparent",
+    color: "#f97316",
   },
-  navLinks: {
+  desktopNav: {
     display: "flex",
-    gap: "1.5rem",
+    gap: "2rem",
     alignItems: "center",
-    flexWrap: "wrap",
   },
   navLink: {
     color: "#cbd5e1",
@@ -163,17 +129,22 @@ const styles = {
     display: "flex",
     alignItems: "center",
     gap: "0.5rem",
-    transition: "color 0.3s",
     fontSize: "0.95rem",
-    fontWeight: "500",
-  },
-  navIcon: {
-    fontSize: "1.1rem",
   },
   userSection: {
     display: "flex",
     alignItems: "center",
     gap: "1rem",
+  },
+  themeBtn: {
+    background: "transparent",
+    border: "none",
+    color: "#cbd5e1",
+    cursor: "pointer",
+    fontSize: "1.2rem",
+    padding: "0.5rem",
+    display: "flex",
+    alignItems: "center",
   },
   userInfo: {
     display: "flex",
@@ -182,7 +153,6 @@ const styles = {
     backgroundColor: "#334155",
     padding: "0.5rem 1rem",
     borderRadius: "8px",
-    cursor: "pointer",
   },
   userAvatar: {
     width: "32px",
@@ -205,13 +175,13 @@ const styles = {
     padding: "0.5rem 1rem",
     borderRadius: "8px",
     cursor: "pointer",
-    fontSize: "0.9rem",
-    transition: "background 0.2s",
+    display: "flex",
+    alignItems: "center",
+    gap: "0.5rem",
   },
   authBtns: {
     display: "flex",
     gap: "1rem",
-    alignItems: "center",
   },
   loginBtn: {
     backgroundColor: "transparent",
@@ -220,20 +190,48 @@ const styles = {
     borderRadius: "8px",
     textDecoration: "none",
     border: "1px solid #334155",
-    fontSize: "0.9rem",
-    transition: "all 0.2s",
   },
-  joinBtn: {
+  registerBtn: {
     backgroundColor: "#f97316",
     color: "white",
     padding: "0.5rem 1.5rem",
     borderRadius: "8px",
     textDecoration: "none",
     fontWeight: "bold",
-    fontSize: "0.9rem",
+  },
+  menuBtn: {
+    display: "none",
+    background: "transparent",
+    border: "none",
+    color: "#cbd5e1",
+    cursor: "pointer",
+  },
+  mobileMenu: {
+    position: "absolute",
+    top: "70px",
+    left: 0,
+    right: 0,
+    backgroundColor: "#1e293b",
+    borderBottom: "1px solid #334155",
+    padding: "1rem",
+    display: "flex",
+    flexDirection: "column",
+    gap: "0.5rem",
+    zIndex: 999,
+  },
+  mobileLink: {
+    color: "#cbd5e1",
+    textDecoration: "none",
+    padding: "0.75rem 1rem",
     display: "flex",
     alignItems: "center",
-    gap: "0.5rem",
-    transition: "all 0.2s",
+    gap: "0.75rem",
+    borderRadius: "8px",
   },
 };
+
+// Make responsive
+if (typeof window !== "undefined" && window.innerWidth <= 768) {
+  styles.desktopNav.display = "none";
+  styles.menuBtn.display = "block";
+}

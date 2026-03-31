@@ -1,46 +1,59 @@
-import { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { useAuth } from "../contexts/AuthContext";
+import { useState } from "react";
+import { useParams, useNavigate, Link } from "react-router-dom";
+import api from "../api/axios";
 import { useToast } from "../contexts/ToastContext";
 import { motion } from "framer-motion";
-import { FiMail, FiLock, FiLogIn } from "react-icons/fi";
+import { FiLock, FiCheckCircle } from "react-icons/fi";
 
-export default function Login() {
-  const { login } = useAuth();
-  const { showSuccess, showError } = useToast();
+export default function ResetPassword() {
+  const { token } = useParams();
   const navigate = useNavigate();
-  const [form, setForm] = useState({ email: "", password: "" });
+  const { showSuccess, showError } = useToast();
+  const [form, setForm] = useState({
+    new_password: "",
+    confirm_password: ""
+  });
   const [loading, setLoading] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
-
-  useEffect(() => {
-    const savedEmail = localStorage.getItem("savedEmail");
-    if (savedEmail) {
-      setForm({ email: savedEmail, password: "" });
-      setRememberMe(true);
-    }
-  }, []);
+  const [success, setSuccess] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (form.new_password !== form.confirm_password) {
+      showError("❌ Passwords don't match!");
+      return;
+    }
+    
     setLoading(true);
     try {
-      await login(form.email, form.password);
-      
-      if (rememberMe) {
-        localStorage.setItem("savedEmail", form.email);
-      } else {
-        localStorage.removeItem("savedEmail");
-      }
-      
-      showSuccess("✅ Login successful! Welcome back!");
-      setTimeout(() => navigate("/dashboard"), 1000);
+      await api.post(`/reset-password/${token}/`, {
+        new_password: form.new_password,
+        confirm_password: form.confirm_password
+      });
+      setSuccess(true);
+      showSuccess("✅ Password reset successful!");
+      setTimeout(() => navigate("/login"), 3000);
     } catch (err) {
-      showError("❌ Invalid email or password. Please try again.");
+      showError("❌ Invalid or expired reset link. Please try again.");
     } finally {
       setLoading(false);
     }
   };
+
+  if (success) {
+    return (
+      <div style={styles.container}>
+        <div style={styles.card}>
+          <div style={styles.successIcon}>
+            <FiCheckCircle size={60} color="#10b981" />
+          </div>
+          <h2 style={styles.successTitle}>Password Reset Success!</h2>
+          <p style={styles.successText}>You can now login with your new password.</p>
+          <Link to="/login" style={styles.successBtn}>Go to Login</Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={styles.container}>
@@ -52,18 +65,18 @@ export default function Login() {
       >
         <div style={styles.header}>
           <img src="/hr-hub-logo.svg" alt="HR-Hub" style={styles.logo} />
-          <h1 style={styles.title}>Welcome Back</h1>
-          <p style={styles.subtitle}>Sign in to continue to HR-Hub</p>
+          <h1 style={styles.title}>Create New Password</h1>
+          <p style={styles.subtitle}>Enter your new password below</p>
         </div>
         
         <form onSubmit={handleSubmit} style={styles.form}>
           <div style={styles.inputGroup}>
-            <FiMail style={styles.inputIcon} />
+            <FiLock style={styles.inputIcon} />
             <input
-              type="email"
-              placeholder="Email Address"
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
+              type="password"
+              placeholder="New Password (min 8 characters)"
+              value={form.new_password}
+              onChange={(e) => setForm({ ...form, new_password: e.target.value })}
               style={styles.input}
               required
             />
@@ -73,25 +86,12 @@ export default function Login() {
             <FiLock style={styles.inputIcon} />
             <input
               type="password"
-              placeholder="Password"
-              value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
+              placeholder="Confirm New Password"
+              value={form.confirm_password}
+              onChange={(e) => setForm({ ...form, confirm_password: e.target.value })}
               style={styles.input}
               required
             />
-          </div>
-          
-          <div style={styles.options}>
-            <label style={styles.checkboxLabel}>
-              <input
-                type="checkbox"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                style={styles.checkbox}
-              />
-              Remember me
-            </label>
-            <Link to="/forgot-password" style={styles.forgotLink}>Forgot Password?</Link>
           </div>
           
           <motion.button
@@ -101,14 +101,13 @@ export default function Login() {
             disabled={loading}
             style={styles.button}
           >
-            <FiLogIn />
-            {loading ? "Signing in..." : "Sign In"}
+            {loading ? "Resetting..." : "Reset Password"}
           </motion.button>
         </form>
         
-        <p style={styles.footer}>
-          Don't have an account? <Link to="/register" style={styles.link}>Create Account</Link>
-        </p>
+        <div style={styles.footer}>
+          <Link to="/login" style={styles.backLink}>Back to Login</Link>
+        </div>
       </motion.div>
     </div>
   );
@@ -174,28 +173,6 @@ const styles = {
     color: "white",
     fontSize: "1rem",
   },
-  options: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    fontSize: "0.875rem",
-  },
-  checkboxLabel: {
-    color: "#94a3b8",
-    display: "flex",
-    alignItems: "center",
-    gap: "0.5rem",
-    cursor: "pointer",
-  },
-  checkbox: {
-    width: "16px",
-    height: "16px",
-    cursor: "pointer",
-  },
-  forgotLink: {
-    color: "#f97316",
-    textDecoration: "none",
-  },
   button: {
     backgroundColor: "#f97316",
     color: "white",
@@ -205,19 +182,40 @@ const styles = {
     fontWeight: "bold",
     cursor: "pointer",
     fontSize: "1rem",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: "0.5rem",
+    marginTop: "0.5rem",
   },
   footer: {
     textAlign: "center",
     marginTop: "1.5rem",
+  },
+  backLink: {
     color: "#94a3b8",
+    textDecoration: "none",
     fontSize: "0.875rem",
   },
-  link: {
-    color: "#f97316",
+  successIcon: {
+    textAlign: "center",
+    marginBottom: "1rem",
+  },
+  successTitle: {
+    textAlign: "center",
+    fontSize: "1.5rem",
+    color: "#10b981",
+    marginBottom: "0.5rem",
+  },
+  successText: {
+    textAlign: "center",
+    color: "#94a3b8",
+    marginBottom: "1.5rem",
+  },
+  successBtn: {
+    display: "block",
+    textAlign: "center",
+    backgroundColor: "#f97316",
+    color: "white",
+    padding: "0.75rem",
+    borderRadius: "8px",
     textDecoration: "none",
+    fontWeight: "bold",
   },
 };

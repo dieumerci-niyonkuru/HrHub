@@ -1,9 +1,14 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import api from "../api/axios";
+import { useToast } from "../contexts/ToastContext";
+import { motion } from "framer-motion";
+import { FiUser, FiMail, FiLock, FiUserPlus } from "react-icons/fi";
+import PasswordChecklist from "react-password-checklist";
 
 export default function Register() {
   const navigate = useNavigate();
+  const { showSuccess, showError } = useToast();
   const [form, setForm] = useState({
     email: "",
     first_name: "",
@@ -13,25 +18,14 @@ export default function Register() {
     phone: "",
     department: "",
   });
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError("");
-    setSuccess("");
     
-    // Client-side validation
     if (form.password !== form.confirm_password) {
-      setError("Passwords don't match");
-      setLoading(false);
-      return;
-    }
-    
-    if (form.password.length < 8) {
-      setError("Password must be at least 8 characters");
+      showError("❌ Passwords don't match!");
       setLoading(false);
       return;
     }
@@ -47,36 +41,13 @@ export default function Register() {
         department: form.department,
       });
       
-      setSuccess(response.data.message || "Registration successful! Please check your terminal for verification link.");
-      
-      // Clear form
-      setForm({
-        email: "",
-        first_name: "",
-        last_name: "",
-        password: "",
-        confirm_password: "",
-        phone: "",
-        department: "",
-      });
-      
-      // Redirect to login after 3 seconds
-      setTimeout(() => {
-        navigate("/login");
-      }, 3000);
-      
+      showSuccess("✅ Account created successfully! Please login.");
+      setTimeout(() => navigate("/login"), 2000);
     } catch (err) {
-      console.error("Registration error:", err);
-      if (err.response?.data) {
-        // Handle different error formats
-        if (typeof err.response.data === 'object') {
-          const errors = Object.values(err.response.data).flat();
-          setError(errors.join(', '));
-        } else {
-          setError(err.response.data.detail || "Registration failed");
-        }
+      if (err.response?.data?.email) {
+        showError("❌ Email already registered. Please use a different email.");
       } else {
-        setError("Network error. Please make sure backend is running.");
+        showError("❌ Registration failed. Please try again.");
       }
     } finally {
       setLoading(false);
@@ -85,81 +56,130 @@ export default function Register() {
 
   return (
     <div style={styles.container}>
-      <div style={styles.card}>
-        <h1 style={styles.title}>Create Account</h1>
-        <p style={styles.subtitle}>Join HR-Hub as an Interviewer</p>
+      <motion.div
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        style={styles.card}
+      >
+        <div style={styles.header}>
+          <img src="/hr-hub-logo.svg" alt="HR-Hub" style={styles.logo} />
+          <h1 style={styles.title}>Create Account</h1>
+          <p style={styles.subtitle}>Join HR-Hub as an Interviewer</p>
+        </div>
         
-        {error && <div style={styles.error}>{error}</div>}
-        {success && <div style={styles.success}>{success}</div>}
-        
-        <form onSubmit={handleSubmit}>
-          <input
-            type="email"
-            placeholder="Email *"
-            value={form.email}
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
-            style={styles.input}
-            required
-          />
-          <input
-            type="text"
-            placeholder="First Name *"
-            value={form.first_name}
-            onChange={(e) => setForm({ ...form, first_name: e.target.value })}
-            style={styles.input}
-            required
-          />
-          <input
-            type="text"
-            placeholder="Last Name *"
-            value={form.last_name}
-            onChange={(e) => setForm({ ...form, last_name: e.target.value })}
-            style={styles.input}
-            required
-          />
-          <input
-            type="tel"
-            placeholder="Phone (Optional)"
-            value={form.phone}
-            onChange={(e) => setForm({ ...form, phone: e.target.value })}
-            style={styles.input}
-          />
-          <input
-            type="text"
-            placeholder="Department (Optional)"
-            value={form.department}
-            onChange={(e) => setForm({ ...form, department: e.target.value })}
-            style={styles.input}
-          />
-          <input
-            type="password"
-            placeholder="Password * (min 8 characters)"
-            value={form.password}
-            onChange={(e) => setForm({ ...form, password: e.target.value })}
-            style={styles.input}
-            required
-          />
-          <input
-            type="password"
-            placeholder="Confirm Password *"
-            value={form.confirm_password}
-            onChange={(e) => setForm({ ...form, confirm_password: e.target.value })}
-            style={styles.input}
-            required
-          />
-          <button
+        <form onSubmit={handleSubmit} style={styles.form}>
+          <div style={styles.row}>
+            <div style={styles.inputGroup}>
+              <FiUser style={styles.inputIcon} />
+              <input
+                type="text"
+                placeholder="First Name *"
+                value={form.first_name}
+                onChange={(e) => setForm({ ...form, first_name: e.target.value })}
+                style={styles.input}
+                required
+              />
+            </div>
+            <div style={styles.inputGroup}>
+              <FiUser style={styles.inputIcon} />
+              <input
+                type="text"
+                placeholder="Last Name *"
+                value={form.last_name}
+                onChange={(e) => setForm({ ...form, last_name: e.target.value })}
+                style={styles.input}
+                required
+              />
+            </div>
+          </div>
+          
+          <div style={styles.inputGroup}>
+            <FiMail style={styles.inputIcon} />
+            <input
+              type="email"
+              placeholder="Email Address *"
+              value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+              style={styles.input}
+              required
+            />
+          </div>
+          
+          <div style={styles.row}>
+            <input
+              type="tel"
+              placeholder="Phone (Optional)"
+              value={form.phone}
+              onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              style={{ ...styles.input, flex: 1 }}
+            />
+            <input
+              type="text"
+              placeholder="Department (Optional)"
+              value={form.department}
+              onChange={(e) => setForm({ ...form, department: e.target.value })}
+              style={{ ...styles.input, flex: 1 }}
+            />
+          </div>
+          
+          <div style={styles.inputGroup}>
+            <FiLock style={styles.inputIcon} />
+            <input
+              type="password"
+              placeholder="Password * (min 8 characters)"
+              value={form.password}
+              onChange={(e) => setForm({ ...form, password: e.target.value })}
+              style={styles.input}
+              required
+            />
+          </div>
+          
+          <div style={styles.inputGroup}>
+            <FiLock style={styles.inputIcon} />
+            <input
+              type="password"
+              placeholder="Confirm Password *"
+              value={form.confirm_password}
+              onChange={(e) => setForm({ ...form, confirm_password: e.target.value })}
+              style={styles.input}
+              required
+            />
+          </div>
+          
+          {form.password && (
+            <PasswordChecklist
+              rules={["minLength", "specialChar", "number", "capital", "match"]}
+              minLength={8}
+              value={form.password}
+              valueAgain={form.confirm_password}
+              messages={{
+                minLength: "Password has at least 8 characters",
+                specialChar: "Password has at least 1 special character",
+                number: "Password has at least 1 number",
+                capital: "Password has at least 1 capital letter",
+                match: "Passwords match",
+              }}
+              style={styles.passwordChecklist}
+            />
+          )}
+          
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             type="submit"
             disabled={loading}
             style={styles.button}
           >
-            {loading ? "Registering..." : "Register"}
-          </button>
+            <FiUserPlus />
+            {loading ? "Creating Account..." : "Create Account"}
+          </motion.button>
         </form>
         
         <p style={styles.footer}>
           Already have an account? <Link to="/login" style={styles.link}>Sign In</Link>
         </p>
-      </div>
+      </motion.div>
     </div>
   );
 }
@@ -176,62 +196,86 @@ const styles = {
   card: {
     backgroundColor: "#1e293b",
     padding: "2rem",
-    borderRadius: "12px",
-    width: "500px",
+    borderRadius: "16px",
+    width: "550px",
     maxWidth: "100%",
+    boxShadow: "0 20px 40px rgba(0,0,0,0.3)",
+  },
+  header: {
+    textAlign: "center",
+    marginBottom: "1.5rem",
+  },
+  logo: {
+    width: "50px",
+    height: "50px",
+    marginBottom: "0.75rem",
   },
   title: {
-    fontSize: "2rem",
+    fontSize: "1.5rem",
     color: "#f97316",
-    marginBottom: "0.5rem",
-    textAlign: "center",
+    marginBottom: "0.25rem",
   },
   subtitle: {
     color: "#94a3b8",
-    marginBottom: "1.5rem",
-    textAlign: "center",
+    fontSize: "0.875rem",
   },
-  error: {
-    backgroundColor: "rgba(239,68,68,0.1)",
-    border: "1px solid #ef4444",
-    color: "#ef4444",
-    padding: "0.75rem",
-    borderRadius: "6px",
-    marginBottom: "1rem",
+  form: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "1rem",
   },
-  success: {
-    backgroundColor: "rgba(34,197,94,0.1)",
-    border: "1px solid #22c55e",
-    color: "#22c55e",
-    padding: "0.75rem",
-    borderRadius: "6px",
-    marginBottom: "1rem",
+  row: {
+    display: "flex",
+    gap: "1rem",
+  },
+  inputGroup: {
+    position: "relative",
+    flex: 1,
+  },
+  inputIcon: {
+    position: "absolute",
+    left: "12px",
+    top: "50%",
+    transform: "translateY(-50%)",
+    color: "#94a3b8",
+    fontSize: "1rem",
   },
   input: {
     width: "100%",
-    padding: "0.75rem",
-    marginBottom: "1rem",
+    padding: "0.75rem 0.75rem 0.75rem 2.5rem",
     backgroundColor: "#0f172a",
     border: "1px solid #334155",
-    borderRadius: "6px",
+    borderRadius: "8px",
     color: "white",
-    fontSize: "1rem",
+    fontSize: "0.9rem",
+  },
+  passwordChecklist: {
+    backgroundColor: "#0f172a",
+    padding: "0.75rem",
+    borderRadius: "8px",
+    fontSize: "0.75rem",
+    color: "#94a3b8",
   },
   button: {
-    width: "100%",
-    padding: "0.75rem",
     backgroundColor: "#f97316",
-    border: "none",
-    borderRadius: "6px",
     color: "white",
+    border: "none",
+    padding: "0.75rem",
+    borderRadius: "8px",
     fontWeight: "bold",
     cursor: "pointer",
     fontSize: "1rem",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "0.5rem",
+    marginTop: "0.5rem",
   },
   footer: {
     textAlign: "center",
-    marginTop: "1rem",
+    marginTop: "1.5rem",
     color: "#94a3b8",
+    fontSize: "0.875rem",
   },
   link: {
     color: "#f97316",

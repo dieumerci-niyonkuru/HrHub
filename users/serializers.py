@@ -37,9 +37,21 @@ class RegisterSerializer(serializers.ModelSerializer):
         user = User(**validated_data)
         user.set_password(password)
         user.role = 'INTERVIEWER'
-        user.is_verified = True  # AUTO-VERIFY - No email confirmation needed
+        user.is_verified = True
         user.save()
         
         print(f"\n✅ New user registered: {user.email} (Role: {user.role})")
         
         return user
+
+class ForgotPasswordSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+class ResetPasswordSerializer(serializers.Serializer):
+    new_password = serializers.CharField(min_length=8, write_only=True)
+    confirm_password = serializers.CharField(min_length=8, write_only=True)
+    
+    def validate(self, data):
+        if data['new_password'] != data['confirm_password']:
+            raise serializers.ValidationError("Passwords don't match")
+        return data

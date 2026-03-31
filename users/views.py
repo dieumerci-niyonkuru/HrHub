@@ -3,8 +3,11 @@ from rest_framework.permissions import IsAuthenticated, AllowAny, BasePermission
 from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework.exceptions import ValidationError
+from django.utils import timezone
+from datetime import timedelta
 from .models import User
-from .serializers import UserSerializer, RegisterSerializer
+from .serializers import UserSerializer, RegisterSerializer, ForgotPasswordSerializer, ResetPasswordSerializer
 
 class IsSuperHR(BasePermission):
     def has_permission(self, request, view):
@@ -28,8 +31,6 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
     def validate(self, attrs):
         data = super().validate(attrs)
-        
-        # No email verification check - all users can login immediately
         data['user'] = {
             'id': self.user.id,
             'email': self.user.email,
@@ -50,7 +51,6 @@ class RegisterView(generics.CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
-        
         return Response({
             'message': 'Registration successful! You can now login.',
             'user': {
@@ -63,7 +63,79 @@ class RegisterView(generics.CreateAPIView):
 
 class VerifyEmailView(generics.GenericAPIView):
     permission_classes = [AllowAny]
-    # Keep for backward compatibility but not needed
+
+    def get(self, request, token):
+        try:
+            user = User.objects.get(email_verification_token=token)
+            if user.is_verified:
+                return Response({'message': 'Email already verified'})
+            user.is_verified = True
+            user.save()
+            return Response({'message': 'Email verified successfully! You can now login.'})
+        except User.DoesNotExist:
+            return Response({'error': 'Invalid token'}, status=status.HTTP_400_BAD_REQUEST)
+
+class ForgotPasswordView(generics.GenericAPIView):
+    serializer_class = ForgotPasswordSerializer
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data['email']
+        
+        try:
+            user = User.objects.get(email=email)
+            user.password_reset_token = uuid.uuid4()
+            user.password_reset_expires = timezone.now() + timedelta(hours=24)
+            user.save()
+            
+            reset_link = f"http://localhost:5173/reset-password/{user.password_reset_token}/"
+            print(f"\n{'='*60}")
+            print(f"🔐 PASSWORD RESET REQUEST")
+            print(f"To: {user.email}")
+            print(f"Reset Link: {reset_link}")
+            print(f"Expires in: 24 hours")
+            print(f"{'='*60}\n")
+            
+            return Response({
+                'message': 'Password reset link has been sent to your email.'
+            }, status=status.HTTP_200_OK)
+            
+        except User.DoesNotExist:
+            return Response({
+                'message': 'If an account exists with this email, a reset link has been sent.'
+            }, status=status.HTTP_200_OK)
+
+class ResetPasswordView(generics.GenericAPIView):
+    serializer_class = ResetPasswordSerializer
+    permission_classes = [AllowAny]
+
+    def post(self, request, token):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        try:
+            user = User.objects.get(
+                password_reset_token=token,
+                password_reset_expires__gt=timezone.now()
+            )
+            
+            user.set_password(serializer.validated_data['new_password'])
+            user.password_reset_token = uuid.uuid4()
+            user.password_reset_expires = None
+            user.save()
+            
+            print(f"\n✅ Password reset successful for: {user.email}")
+            
+            return Response({
+                'message': 'Password reset successful! You can now login with your new password.'
+            }, status=status.HTTP_200_OK)
+            
+        except User.DoesNotExist:
+            return Response({
+                'error': 'Invalid or expired reset token'
+            }, status=status.HTTP_400_BAD_REQUEST)
 
 class MeView(generics.RetrieveUpdateAPIView):
     permission_classes = [IsAuthenticated]

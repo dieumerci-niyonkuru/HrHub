@@ -1,4 +1,4 @@
-from rest_framework import generics, status, serializers
+from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated, AllowAny, BasePermission
 from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -28,8 +28,8 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
     def validate(self, attrs):
         data = super().validate(attrs)
-        if not self.user.is_verified and not self.user.is_superuser:
-            raise serializers.ValidationError('Please verify your email before logging in.')
+        
+        # No email verification check - all users can login immediately
         data['user'] = {
             'id': self.user.id,
             'email': self.user.email,
@@ -45,20 +45,25 @@ class CustomTokenObtainPairView(TokenObtainPairView):
 class RegisterView(generics.CreateAPIView):
     serializer_class = RegisterSerializer
     permission_classes = [AllowAny]
+    
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        
+        return Response({
+            'message': 'Registration successful! You can now login.',
+            'user': {
+                'email': user.email,
+                'first_name': user.first_name,
+                'last_name': user.last_name,
+                'role': user.role
+            }
+        }, status=status.HTTP_201_CREATED)
 
 class VerifyEmailView(generics.GenericAPIView):
     permission_classes = [AllowAny]
-
-    def get(self, request, token):
-        try:
-            user = User.objects.get(email_verification_token=token)
-            if user.is_verified:
-                return Response({'message': 'Email already verified'})
-            user.is_verified = True
-            user.save()
-            return Response({'message': 'Email verified successfully! You can now login.'})
-        except User.DoesNotExist:
-            return Response({'error': 'Invalid token'}, status=status.HTTP_400_BAD_REQUEST)
+    # Keep for backward compatibility but not needed
 
 class MeView(generics.RetrieveUpdateAPIView):
     permission_classes = [IsAuthenticated]

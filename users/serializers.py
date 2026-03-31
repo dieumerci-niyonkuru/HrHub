@@ -24,7 +24,11 @@ class RegisterSerializer(serializers.ModelSerializer):
     
     def validate(self, data):
         if data['password'] != data['confirm_password']:
-            raise serializers.ValidationError("Passwords don't match")
+            raise serializers.ValidationError({"confirm_password": "Passwords don't match"})
+        
+        if User.objects.filter(email=data['email']).exists():
+            raise serializers.ValidationError({"email": "Email already registered"})
+        
         return data
     
     def create(self, validated_data):
@@ -33,14 +37,9 @@ class RegisterSerializer(serializers.ModelSerializer):
         user = User(**validated_data)
         user.set_password(password)
         user.role = 'INTERVIEWER'
-        user.is_verified = False
+        user.is_verified = True  # AUTO-VERIFY - No email confirmation needed
         user.save()
         
-        # Print verification link to console
-        verification_link = f"http://localhost:5173/verify-email/{user.email_verification_token}/"
-        print(f"\n{'='*60}")
-        print(f"VERIFICATION EMAIL SENT TO: {user.email}")
-        print(f"Click to verify: {verification_link}")
-        print(f"{'='*60}\n")
+        print(f"\n✅ New user registered: {user.email} (Role: {user.role})")
         
         return user

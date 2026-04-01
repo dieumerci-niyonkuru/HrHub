@@ -19,6 +19,6 @@
   "env": {
     "DJANGO_SETTINGS_MODULE": "core.settings",
     "DEBUG": "False",
-    "ALLOWED_HOSTS": "hr-gn9jf005p-dieumerci-niyonkurus-projects.vercel.app,*.vercel.app,hrhub.andasy.dev"
+    "ALLOWED_HOSTS": "hr-hub-three.vercel.app,*.vercel.app,hrhub.andasy.dev"
   }
 }

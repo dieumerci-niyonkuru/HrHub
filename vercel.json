@@ -1,0 +1,24 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "core/wsgi.py",
+      "use": "@vercel/python",
+      "config": {
+        "maxLambdaSize": "15mb",
+        "runtime": "python3.12"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "core/wsgi.py"
+    }
+  ],
+  "env": {
+    "DJANGO_SETTINGS_MODULE": "core.settings",
+    "DEBUG": "False",
+    "ALLOWED_HOSTS": "hr-gn9jf005p-dieumerci-niyonkurus-projects.vercel.app,*.vercel.app,hrhub.andasy.dev"
+  }
+}

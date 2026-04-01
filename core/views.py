@@ -4,14 +4,16 @@ from django.views.decorators.csrf import csrf_exempt
 @csrf_exempt
 def home(request):
     return JsonResponse({
-        "message": "HR-Hub API is running",
-        "version": "1.0.0",
+        "status": "running",
+        "message": "HR-Hub API is alive!",
+        "version": "2.0.0",
         "endpoints": {
             "api": "/api/",
             "admin": "/admin/",
-            "token": "/api/token/",
-            "register": "/api/register/",
-            "candidates": "/api/recruitment/candidates/",
-            "interviews": "/api/recruitment/interviews/"
+            "login": "/api/token/",
+            "register": "/api/register/"
         }
     })
+
+def health(request):
+    return JsonResponse({"status": "healthy", "timestamp": "2024-01-01"})

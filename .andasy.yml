@@ -1,0 +1,10 @@
+name: hrhub
+type: web
+build:
+  dockerfile: Dockerfile
+run:
+  command: gunicorn core.wsgi:application --bind 0.0.0.0:8000 --workers 2
+  port: 8000
+env:
+  - DJANGO_SETTINGS_MODULE=core.settings
+  - PYTHONUNBUFFERED=1

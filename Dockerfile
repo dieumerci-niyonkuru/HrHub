@@ -23,9 +23,8 @@ ENV SECRET_KEY "hgkJRjsyCxrcJe62GkMo9CkFvDgB4BCwTuqsJv0dNJsKYKyH6W"
 ENV DEBUG "False"
 
 RUN python manage.py collectstatic --noinput
-
-RUN chmod +x startup.sh
+RUN chmod +x /code/startup.sh
 
 EXPOSE 8080
 
-CMD ["./startup.sh"]
+CMD ["/bin/sh", "/code/startup.sh"]

@@ -26,4 +26,4 @@ RUN python manage.py collectstatic --noinput
 
 EXPOSE 8080
 
-CMD ["sh", "-c", "python manage.py migrate && gunicorn --bind :8080 --workers 2 core.wsgi"]
+CMD ["sh", "-c", "python manage.py migrate --run-syncdb && python manage.py createsuperuser --noinput --email $DJANGO_SUPERUSER_EMAIL || true && gunicorn --bind :8080 --workers 2 core.wsgi"]

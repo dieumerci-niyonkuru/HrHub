@@ -29,4 +29,4 @@ RUN python manage.py collectstatic --noinput
 
 EXPOSE 8080
 
-CMD python manage.py migrate && gunicorn --bind :8080 --workers 2 core.wsgi
+CMD python manage.py migrate && python manage.py collectstatic --noinput && gunicorn --bind :8080 --workers 2 core.wsgi

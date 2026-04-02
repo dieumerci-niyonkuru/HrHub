@@ -3,11 +3,11 @@ from rest_framework.permissions import IsAuthenticated, AllowAny, BasePermission
 from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from rest_framework.exceptions import ValidationError
 from django.utils import timezone
 from datetime import timedelta
+import uuid
 from .models import User
-from .serializers import UserSerializer, RegisterSerializer, ForgotPasswordSerializer, ResetPasswordSerializer
+from .serializers import UserSerializer, RegisterSerializer
 
 class IsSuperHR(BasePermission):
     def has_permission(self, request, view):
@@ -76,13 +76,13 @@ class VerifyEmailView(generics.GenericAPIView):
             return Response({'error': 'Invalid token'}, status=status.HTTP_400_BAD_REQUEST)
 
 class ForgotPasswordView(generics.GenericAPIView):
-    serializer_class = ForgotPasswordSerializer
     permission_classes = [AllowAny]
 
     def post(self, request):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        email = serializer.validated_data['email']
+        email = request.data.get('email')
+        
+        if not email:
+            return Response({'error': 'Email is required'}, status=status.HTTP_400_BAD_REQUEST)
         
         try:
             user = User.objects.get(email=email)
@@ -91,6 +91,7 @@ class ForgotPasswordView(generics.GenericAPIView):
             user.save()
             
             reset_link = f"http://localhost:5173/reset-password/{user.password_reset_token}/"
+            
             print(f"\n{'='*60}")
             print(f"🔐 PASSWORD RESET REQUEST")
             print(f"To: {user.email}")
@@ -99,7 +100,8 @@ class ForgotPasswordView(generics.GenericAPIView):
             print(f"{'='*60}\n")
             
             return Response({
-                'message': 'Password reset link has been sent to your email.'
+                'message': 'Password reset link has been sent to your email.',
+                'reset_link': reset_link
             }, status=status.HTTP_200_OK)
             
         except User.DoesNotExist:
@@ -108,12 +110,20 @@ class ForgotPasswordView(generics.GenericAPIView):
             }, status=status.HTTP_200_OK)
 
 class ResetPasswordView(generics.GenericAPIView):
-    serializer_class = ResetPasswordSerializer
     permission_classes = [AllowAny]
 
     def post(self, request, token):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        new_password = request.data.get('new_password')
+        confirm_password = request.data.get('confirm_password')
+        
+        if not new_password or not confirm_password:
+            return Response({'error': 'Both password fields are required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if new_password != confirm_password:
+            return Response({'error': 'Passwords do not match'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if len(new_password) < 8:
+            return Response({'error': 'Password must be at least 8 characters'}, status=status.HTTP_400_BAD_REQUEST)
         
         try:
             user = User.objects.get(
@@ -121,7 +131,7 @@ class ResetPasswordView(generics.GenericAPIView):
                 password_reset_expires__gt=timezone.now()
             )
             
-            user.set_password(serializer.validated_data['new_password'])
+            user.set_password(new_password)
             user.password_reset_token = uuid.uuid4()
             user.password_reset_expires = None
             user.save()

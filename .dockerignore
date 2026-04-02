@@ -1,0 +1,4 @@
+andasy.hcl
+config.hcl
+.git/
+*.sqlite3

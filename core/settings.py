@@ -3,27 +3,9 @@ from pathlib import Path
 from datetime import timedelta
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-dev-key-change-in-production')
-DEBUG = os.environ.get('DEBUG', 'False') == 'True'  # Set to False in production
-
-# IMPORTANT: Add ALL possible Vercel and Andasy hosts
-ALLOWED_HOSTS = [
-    'localhost',
-    '127.0.0.1',
-    # Vercel hosts
-    'hr-hub-three.vercel.app',
-    'hr-gn9jf005p-dieumerci-niyonkurus-projects.vercel.app',
-    '*.vercel.app',
-    # Andasy hosts
-    'hrhub.andasy.dev',
-    '*.andasy.dev',
-    # Development
-    'hrhub.andasy.io',
-]
-
-# Also check environment variable for additional hosts
-if os.environ.get('ALLOWED_HOSTS'):
-    ALLOWED_HOSTS.extend(os.environ.get('ALLOWED_HOSTS', '').split(','))
+SECRET_KEY = 'django-insecure-dev-key-change-in-production'
+DEBUG = True
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '*']
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -43,7 +25,6 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -83,7 +64,7 @@ REST_FRAMEWORK = {
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.AllowAny',  # Allow any during testing
+        'rest_framework.permissions.AllowAny',
     ],
 }
 
@@ -97,21 +78,15 @@ SIMPLE_JWT = {
 
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:5173',
+    'http://localhost:5174',
+    'http://localhost:5175',
     'http://127.0.0.1:5173',
-    'https://hr-hub-three.vercel.app',
-    'https://hr-gn9jf005p-dieumerci-niyonkurus-projects.vercel.app',
-    'https://*.vercel.app',
-    'https://hrhub.andasy.dev',
 ]
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
-
-MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
 
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'

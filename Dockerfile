@@ -1,20 +1,32 @@
-FROM python:3.13-slim
+ARG PYTHON_VERSION=3.14-slim
 
-WORKDIR /app
+FROM python:${PYTHON_VERSION}
 
-# Install dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
 
-# Copy application
-COPY . .
+LABEL andasy_launch_runtime="python-app"
 
-# Run migrations and collect static
-RUN python manage.py migrate || true
-RUN python manage.py collectstatic --noinput || true
+# install psycopg2 dependencies.
+RUN apt-get update && apt-get install -y \
+    libpq-dev \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
 
-# Expose port
+RUN mkdir -p /code
+
+WORKDIR /code
+
+COPY requirements.txt /tmp/requirements.txt
+RUN set -ex && \
+    pip install --upgrade pip && \
+    pip install -r /tmp/requirements.txt && \
+    rm -rf /root/.cache/
+COPY . /code
+
+ENV SECRET_KEY "hgkJRjsyCxrcJe62GkMo9CkFvDgB4BCwTuqsJv0dNJsKYKyH6W"
+RUN python manage.py collectstatic --noinput
+
 EXPOSE 8000
 
-# Start Gunicorn
-CMD ["gunicorn", "core.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "2", "--timeout", "120", "--log-level", "info"]
+CMD ["gunicorn","--bind",":8000","--workers","2","core.wsgi"]

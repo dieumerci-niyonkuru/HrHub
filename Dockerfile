@@ -27,6 +27,6 @@ COPY . /code
 ENV SECRET_KEY "hgkJRjsyCxrcJe62GkMo9CkFvDgB4BCwTuqsJv0dNJsKYKyH6W"
 RUN python manage.py collectstatic --noinput
 
-EXPOSE 8000
+EXPOSE 8080
 
-CMD ["gunicorn","--bind",":8000","--workers","2","core.wsgi"]
+CMD python manage.py migrate && gunicorn --bind :8080 --workers 2 core.wsgi

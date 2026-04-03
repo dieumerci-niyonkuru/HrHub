@@ -90,7 +90,7 @@ class ForgotPasswordView(generics.GenericAPIView):
             user.password_reset_expires = timezone.now() + timedelta(hours=24)
             user.save()
             
-            reset_link = f"http://localhost:5173/reset-password/{user.password_reset_token}/"
+            reset_link = f"https://hr-hub-9j1a.vercel.app/reset-password/{user.password_reset_token}/"
             
             print(f"\n{'='*60}")
             print(f"🔐 PASSWORD RESET REQUEST")

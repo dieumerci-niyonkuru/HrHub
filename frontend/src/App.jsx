@@ -18,29 +18,14 @@ import Interviews from "./pages/Interviews";
 import Interviewers from "./pages/Interviewers";
 import MyInterviews from "./pages/MyInterviews";
 
-// Redirect logged-in users away from auth pages
-function PublicRoute({ children }) {
-  const { user } = useAuth();
-  return user ? <Navigate to="/dashboard" replace /> : children;
-}
-
-// Require authentication
 function PrivateRoute({ children }) {
   const { user } = useAuth();
-  return user ? children : <Navigate to="/login" replace />;
-}
-
-// Only SUPER_HR and HR_ASSISTANT can access
-function HRRoute({ children }) {
-  const { user } = useAuth();
-  if (!user) return <Navigate to="/login" replace />;
-  if (user.role === "INTERVIEWER") return <Navigate to="/dashboard" replace />;
-  return children;
+  return user ? children : <Navigate to="/login" />;
 }
 
 function AppLayout({ children }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", backgroundColor: "#0f172a", color: "#f1f5f9" }}>
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
       <Navbar />
       <main style={{ flex: 1 }}>{children}</main>
       <Footer />
@@ -56,30 +41,18 @@ function App() {
         <ToastProvider>
           <BrowserRouter>
             <Routes>
-              {/* Public */}
               <Route path="/" element={<AppLayout><Home /></AppLayout>} />
               <Route path="/about" element={<AppLayout><About /></AppLayout>} />
               <Route path="/contact" element={<AppLayout><Contact /></AppLayout>} />
-
-              {/* Auth - redirect if already logged in */}
-              <Route path="/login" element={<PublicRoute><AppLayout><Login /></AppLayout></PublicRoute>} />
-              <Route path="/register" element={<PublicRoute><AppLayout><Register /></AppLayout></PublicRoute>} />
-              <Route path="/forgot-password" element={<PublicRoute><AppLayout><ForgotPassword /></AppLayout></PublicRoute>} />
+              <Route path="/login" element={<AppLayout><Login /></AppLayout>} />
+              <Route path="/register" element={<AppLayout><Register /></AppLayout>} />
+              <Route path="/forgot-password" element={<AppLayout><ForgotPassword /></AppLayout>} />
               <Route path="/reset-password/:token" element={<AppLayout><ResetPassword /></AppLayout>} />
-
-              {/* Private - all roles */}
               <Route path="/dashboard" element={<PrivateRoute><AppLayout><Dashboard /></AppLayout></PrivateRoute>} />
-
-              {/* HR Only */}
-              <Route path="/candidates" element={<HRRoute><AppLayout><Candidates /></AppLayout></HRRoute>} />
-              <Route path="/interviews" element={<HRRoute><AppLayout><Interviews /></AppLayout></HRRoute>} />
-              <Route path="/interviewers" element={<HRRoute><AppLayout><Interviewers /></AppLayout></HRRoute>} />
-
-              {/* Interviewer */}
+              <Route path="/candidates" element={<PrivateRoute><AppLayout><Candidates /></AppLayout></PrivateRoute>} />
+              <Route path="/interviews" element={<PrivateRoute><AppLayout><Interviews /></AppLayout></PrivateRoute>} />
+              <Route path="/interviewers" element={<PrivateRoute><AppLayout><Interviewers /></AppLayout></PrivateRoute>} />
               <Route path="/my-interviews" element={<PrivateRoute><AppLayout><MyInterviews /></AppLayout></PrivateRoute>} />
-
-              {/* Fallback */}
-              <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </BrowserRouter>
         </ToastProvider>

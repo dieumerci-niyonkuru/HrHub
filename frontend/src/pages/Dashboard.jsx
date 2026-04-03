@@ -1,209 +1,242 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import api from "../api/axios";
 import { useAuth } from "../contexts/AuthContext";
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const navigate = useNavigate();
-  const [stats, setStats] = useState({ total_candidates: 0, total_interviews: 0, total_interviewers: 0, my_interviews: 0, pending: 0, interview: 0, hired: 0, rejected: 0, scheduled: 0, completed: 0, cancelled: 0 });
-  const [recentCandidates, setRecentCandidates] = useState([]);
-  const [recentInterviews, setRecentInterviews] = useState([]);
+  const [stats, setStats] = useState({
+    total_candidates: 0,
+    total_interviews: 0,
+    total_interviewers: 0,
+    my_interviews: 0,
+    pending_candidates: 0,
+    hired_candidates: 0,
+    upcoming_interviews: 0,
+    completed_interviews: 0
+  });
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => { fetchDashboardData(); }, []);
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
 
   const fetchDashboardData = async () => {
     try {
+      // For SUPER_HR or HR_ASSISTANT - get all data
       if (user?.role === "SUPER_HR" || user?.role === "HR_ASSISTANT") {
-        const [c, i, iv] = await Promise.all([
+        const [candidates, interviews, interviewers] = await Promise.all([
           api.get("/recruitment/candidates/"),
           api.get("/recruitment/interviews/"),
-          api.get("/users/interviewers/"),
+          api.get("/users/interviewers/")
         ]);
-        const cd = c.data || [], id = i.data || [];
+        
+        const candidatesData = candidates.data || [];
+        const interviewsData = interviews.data || [];
+        
         setStats({
-          total_candidates: cd.length, total_interviews: id.length,
-          total_interviewers: iv.data?.length || 0,
-          pending: cd.filter(x => x.status === "PENDING").length,
-          interview: cd.filter(x => x.status === "INTERVIEW").length,
-          hired: cd.filter(x => x.status === "HIRED").length,
-          rejected: cd.filter(x => x.status === "REJECTED").length,
-          scheduled: id.filter(x => x.status === "SCHEDULED").length,
-          completed: id.filter(x => x.status === "COMPLETED").length,
-          cancelled: id.filter(x => x.status === "CANCELLED").length,
-          my_interviews: 0,
+          total_candidates: candidatesData.length,
+          total_interviews: interviewsData.length,
+          total_interviewers: interviewers.data?.length || 0,
+          pending_candidates: candidatesData.filter(c => c.status === "PENDING").length,
+          hired_candidates: candidatesData.filter(c => c.status === "HIRED").length,
+          upcoming_interviews: interviewsData.filter(i => i.status === "SCHEDULED").length,
+          completed_interviews: interviewsData.filter(i => i.status === "COMPLETED").length,
+          my_interviews: 0
         });
-        setRecentCandidates(cd.slice(-5).reverse());
-        setRecentInterviews(id.slice(-5).reverse());
-      } else {
-        const r = await api.get("/recruitment/my-interviews/");
-        const d = r.data || [];
-        setStats({ ...stats, my_interviews: d.length, scheduled: d.filter(x => x.status === "SCHEDULED").length, completed: d.filter(x => x.status === "COMPLETED").length });
-        setRecentInterviews(d.slice(-5).reverse());
+      } 
+      // For INTERVIEWER - only get their own interviews
+      else if (user?.role === "INTERVIEWER") {
+        const [myInterviews] = await Promise.all([
+          api.get("/recruitment/my-interviews/")
+        ]);
+        
+        const myInterviewsData = myInterviews.data || [];
+        
+        setStats({
+          total_candidates: 0,
+          total_interviews: 0,
+          total_interviewers: 0,
+          my_interviews: myInterviewsData.length,
+          pending_candidates: 0,
+          hired_candidates: 0,
+          upcoming_interviews: myInterviewsData.filter(i => i.status === "SCHEDULED").length,
+          completed_interviews: myInterviewsData.filter(i => i.status === "COMPLETED").length
+        });
       }
-    } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+    } catch (error) {
+      console.error("Dashboard error:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  if (loading) return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "60vh", gap: "1rem" }}>
-      <div style={S.spinner} />
-      <p style={{ color: "#94a3b8" }}>Loading dashboard...</p>
-    </div>
-  );
-
-  const isHR = user?.role === "SUPER_HR" || user?.role === "HR_ASSISTANT";
-  const statusColors = { PENDING: "#f97316", INTERVIEW: "#3b82f6", HIRED: "#10b981", REJECTED: "#ef4444", SCHEDULED: "#3b82f6", COMPLETED: "#10b981", CANCELLED: "#ef4444" };
-
-  return (
-    <div style={S.container}>
-      {/* Welcome */}
-      <div style={S.welcome}>
-        <div>
-          <h1 style={S.title}>Welcome back, {user?.full_name?.split(" ")[0] || "there"}! 👋</h1>
-          <p style={S.subtitle}>{new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</p>
-        </div>
-        <span style={S.rolePill}>{user?.role?.replace(/_/g, " ")}</span>
+  if (loading) {
+    return (
+      <div style={styles.loading}>
+        <div style={styles.spinner}></div>
+        <p>Loading dashboard...</p>
       </div>
+    );
+  }
 
-      {/* Stats Cards */}
-      <div style={S.statsGrid}>
-        {isHR ? [
-          { label: "Total Candidates", value: stats.total_candidates, icon: "👥", color: "#f97316", click: "/candidates" },
-          { label: "Total Interviews", value: stats.total_interviews, icon: "📅", color: "#3b82f6", click: "/interviews" },
-          { label: "Interviewers", value: stats.total_interviewers, icon: "🎯", color: "#8b5cf6", click: "/interviewers" },
-          { label: "Upcoming", value: stats.scheduled, icon: "⏰", color: "#10b981", click: "/interviews" },
-        ] : [
-          { label: "My Interviews", value: stats.my_interviews, icon: "📋", color: "#f97316", click: "/my-interviews" },
-          { label: "Upcoming", value: stats.scheduled, icon: "⏰", color: "#3b82f6", click: "/my-interviews" },
-          { label: "Completed", value: stats.completed, icon: "✅", color: "#10b981", click: "/my-interviews" },
-        ].map((s, i) => (
-          <div key={i} onClick={() => navigate(s.click)} style={{ ...S.statCard, borderLeft: `4px solid ${s.color}`, cursor: "pointer" }}>
-            <div style={{ fontSize: "2rem" }}>{s.icon}</div>
+  // SUPER_HR or HR_ASSISTANT Dashboard
+  if (user?.role === "SUPER_HR" || user?.role === "HR_ASSISTANT") {
+    return (
+      <div style={styles.container}>
+        <div style={styles.welcomeSection}>
+          <h1 style={styles.title}>Welcome, {user?.full_name?.split(" ")[0] || "Admin"}! 👋</h1>
+          <p style={styles.subtitle}>Here's your recruitment dashboard overview</p>
+        </div>
+        
+        <div style={styles.statsGrid}>
+          <div style={styles.statCard}>
+            <div style={styles.statIcon}>👥</div>
             <div>
-              <div style={{ ...S.statNum, color: s.color }}>{s.value}</div>
-              <div style={S.statLabel}>{s.label}</div>
-            </div>
-            <div style={{ ...S.statBar, width: "100%" }}>
-              <div style={{ ...S.statBarFill, backgroundColor: s.color, width: `${Math.min(s.value * 10, 100)}%` }} />
+              <div style={styles.statNumber}>{stats.total_candidates}</div>
+              <div style={styles.statLabel}>Total Candidates</div>
             </div>
           </div>
-        ))}
-      </div>
-
-      {isHR && (
-        <div style={S.grid2}>
-          {/* Candidate Pipeline */}
-          <div style={S.card}>
-            <h3 style={S.cardTitle}>📊 Candidate Pipeline</h3>
-            {[
-              { label: "Pending Review", value: stats.pending, color: "#f97316" },
-              { label: "In Interview", value: stats.interview, color: "#3b82f6" },
-              { label: "Hired", value: stats.hired, color: "#10b981" },
-              { label: "Rejected", value: stats.rejected, color: "#ef4444" },
-            ].map((s, i) => (
-              <div key={i} style={{ marginBottom: "1rem" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.35rem" }}>
-                  <span style={{ color: "#cbd5e1", fontSize: "0.875rem" }}>{s.label}</span>
-                  <span style={{ color: s.color, fontWeight: "bold" }}>{s.value}</span>
-                </div>
-                <div style={{ backgroundColor: "#0f172a", borderRadius: "99px", height: "8px", overflow: "hidden" }}>
-                  <div style={{ backgroundColor: s.color, height: "100%", width: `${stats.total_candidates ? (s.value / stats.total_candidates * 100) : 0}%`, borderRadius: "99px", transition: "width 1s ease" }} />
-                </div>
-              </div>
-            ))}
+          
+          <div style={styles.statCard}>
+            <div style={styles.statIcon}>📅</div>
+            <div>
+              <div style={styles.statNumber}>{stats.total_interviews}</div>
+              <div style={styles.statLabel}>Total Interviews</div>
+            </div>
           </div>
-
-          {/* Quick Actions */}
-          <div style={S.card}>
-            <h3 style={S.cardTitle}>⚡ Quick Actions</h3>
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-              {[
-                { label: "➕ Add New Candidate", path: "/candidates", color: "#f97316" },
-                { label: "📅 Schedule Interview", path: "/interviews", color: "#3b82f6" },
-                { label: "👤 Add Interviewer", path: "/interviewers", color: "#8b5cf6" },
-                { label: "📊 View All Candidates", path: "/candidates", color: "#10b981" },
-              ].map((a, i) => (
-                <button key={i} onClick={() => navigate(a.path)}
-                  style={{ backgroundColor: `${a.color}15`, color: a.color, border: `1px solid ${a.color}30`, padding: "0.75rem 1rem", borderRadius: "8px", cursor: "pointer", textAlign: "left", fontWeight: "600", fontSize: "0.875rem", transition: "all 0.2s" }}>
-                  {a.label}
-                </button>
-              ))}
+          
+          <div style={styles.statCard}>
+            <div style={styles.statIcon}>🎯</div>
+            <div>
+              <div style={styles.statNumber}>{stats.total_interviewers}</div>
+              <div style={styles.statLabel}>Interviewers</div>
+            </div>
+          </div>
+          
+          <div style={styles.statCard}>
+            <div style={styles.statIcon}>⏳</div>
+            <div>
+              <div style={styles.statNumber}>{stats.upcoming_interviews}</div>
+              <div style={styles.statLabel}>Upcoming</div>
             </div>
           </div>
         </div>
-      )}
-
-      <div style={S.grid2}>
-        {/* Recent Candidates */}
-        {isHR && (
-          <div style={S.card}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-              <h3 style={S.cardTitle}>👥 Recent Candidates</h3>
-              <button onClick={() => navigate("/candidates")} style={S.viewAll}>View All →</button>
-            </div>
-            {recentCandidates.length === 0 ? (
-              <p style={{ color: "#94a3b8", textAlign: "center", padding: "2rem" }}>No candidates yet</p>
-            ) : recentCandidates.map((c, i) => (
-              <div key={i} style={S.listItem}>
-                <div style={S.listAvatar}>{c.first_name[0]}{c.last_name[0]}</div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ color: "#f1f5f9", fontWeight: "600", fontSize: "0.875rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.first_name} {c.last_name}</div>
-                  <div style={{ color: "#94a3b8", fontSize: "0.75rem" }}>{c.position}</div>
-                </div>
-                <span style={{ ...S.badge, backgroundColor: `${statusColors[c.status]}20`, color: statusColors[c.status] }}>{c.status}</span>
+        
+        <div style={styles.secondaryGrid}>
+          <div style={styles.infoCard}>
+            <h3 style={styles.infoTitle}>📊 Candidate Status</h3>
+            <div style={styles.statusList}>
+              <div style={styles.statusItem}>
+                <span>Pending Review</span>
+                <span style={styles.statusBadgePending}>{stats.pending_candidates}</span>
               </div>
-            ))}
-          </div>
-        )}
-
-        {/* Recent Interviews */}
-        <div style={S.card}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-            <h3 style={S.cardTitle}>📅 {isHR ? "Recent Interviews" : "My Interviews"}</h3>
-            <button onClick={() => navigate(isHR ? "/interviews" : "/my-interviews")} style={S.viewAll}>View All →</button>
-          </div>
-          {recentInterviews.length === 0 ? (
-            <p style={{ color: "#94a3b8", textAlign: "center", padding: "2rem" }}>No interviews yet</p>
-          ) : recentInterviews.map((iv, i) => (
-            <div key={i} style={S.listItem}>
-              <div style={{ ...S.listAvatar, backgroundColor: "#3b82f620", color: "#3b82f6" }}>📅</div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ color: "#f1f5f9", fontWeight: "600", fontSize: "0.875rem" }}>{iv.candidate_name || `Interview #${iv.id}`}</div>
-                <div style={{ color: "#94a3b8", fontSize: "0.75rem" }}>{iv.interview_type} • {iv.scheduled_at ? new Date(iv.scheduled_at).toLocaleDateString() : "TBD"}</div>
+              <div style={styles.statusItem}>
+                <span>Hired</span>
+                <span style={styles.statusBadgeHired}>{stats.hired_candidates}</span>
               </div>
-              <span style={{ ...S.badge, backgroundColor: `${statusColors[iv.status]}20`, color: statusColors[iv.status] }}>{iv.status}</span>
+              <div style={styles.statusItem}>
+                <span>Completed Interviews</span>
+                <span style={styles.statusBadgeCompleted}>{stats.completed_interviews}</span>
+              </div>
             </div>
-          ))}
+          </div>
+          
+          <div style={styles.infoCard}>
+            <h3 style={styles.infoTitle}>⚡ Quick Actions</h3>
+            <button style={styles.actionBtn} onClick={() => window.location.href = "/candidates"}>
+              + Add New Candidate
+            </button>
+            <button style={styles.actionBtnOutline} onClick={() => window.location.href = "/interviews"}>
+              📅 Schedule Interview
+            </button>
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  }
+
+  // INTERVIEWER Dashboard
+  if (user?.role === "INTERVIEWER") {
+    return (
+      <div style={styles.container}>
+        <div style={styles.welcomeSection}>
+          <h1 style={styles.title}>Welcome, {user?.full_name?.split(" ")[0] || "Interviewer"}! 👋</h1>
+          <p style={styles.subtitle}>Here's your interview schedule</p>
+        </div>
+        
+        <div style={styles.statsGrid}>
+          <div style={styles.statCard}>
+            <div style={styles.statIcon}>📋</div>
+            <div>
+              <div style={styles.statNumber}>{stats.my_interviews}</div>
+              <div style={styles.statLabel}>My Interviews</div>
+            </div>
+          </div>
+          
+          <div style={styles.statCard}>
+            <div style={styles.statIcon}>⏳</div>
+            <div>
+              <div style={styles.statNumber}>{stats.upcoming_interviews}</div>
+              <div style={styles.statLabel}>Upcoming</div>
+            </div>
+          </div>
+          
+          <div style={styles.statCard}>
+            <div style={styles.statIcon}>✅</div>
+            <div>
+              <div style={styles.statNumber}>{stats.completed_interviews}</div>
+              <div style={styles.statLabel}>Completed</div>
+            </div>
+          </div>
+        </div>
+        
+        <div style={styles.infoCard}>
+          <h3 style={styles.infoTitle}>📌 Interview Reminders</h3>
+          <p style={styles.infoText}>
+            You have <strong>{stats.upcoming_interviews}</strong> upcoming interviews.
+            Click "My Interviews" to view details and submit feedback.
+          </p>
+          <button style={styles.actionBtn} onClick={() => window.location.href = "/my-interviews"}>
+            View My Interviews →
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return null;
 }
 
-const S = {
-  container: { padding: "1.5rem 2rem", maxWidth: "1280px", margin: "0 auto" },
-  welcome: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "2rem", flexWrap: "wrap", gap: "1rem" },
-  title: { fontSize: "1.75rem", fontWeight: "bold", color: "#f1f5f9", marginBottom: "0.25rem" },
-  subtitle: { color: "#94a3b8", fontSize: "0.875rem" },
-  rolePill: { backgroundColor: "rgba(249,115,22,0.15)", color: "#f97316", padding: "0.35rem 1rem", borderRadius: "99px", fontSize: "0.8rem", fontWeight: "600", border: "1px solid rgba(249,115,22,0.3)" },
-  statsGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1.25rem", marginBottom: "1.5rem" },
-  statCard: { backgroundColor: "#1e293b", padding: "1.25rem", borderRadius: "12px", display: "flex", alignItems: "flex-start", gap: "1rem", transition: "transform 0.2s", position: "relative", flexDirection: "column" },
-  statNum: { fontSize: "2rem", fontWeight: "bold", lineHeight: 1 },
-  statLabel: { color: "#94a3b8", fontSize: "0.8rem", marginTop: "0.2rem" },
-  statBar: { height: "4px", backgroundColor: "#0f172a", borderRadius: "99px", overflow: "hidden", marginTop: "0.5rem" },
-  statBarFill: { height: "100%", borderRadius: "99px", transition: "width 1s ease" },
-  grid2: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1.25rem", marginBottom: "1.5rem" },
-  card: { backgroundColor: "#1e293b", padding: "1.5rem", borderRadius: "12px" },
-  cardTitle: { color: "#f97316", fontSize: "1rem", fontWeight: "600", marginBottom: "1rem" },
-  viewAll: { backgroundColor: "transparent", border: "none", color: "#f97316", cursor: "pointer", fontSize: "0.8rem", fontWeight: "600" },
-  listItem: { display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.6rem 0", borderBottom: "1px solid #334155" },
-  listAvatar: { width: "36px", height: "36px", backgroundColor: "rgba(249,115,22,0.2)", color: "#f97316", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", fontSize: "0.75rem", flexShrink: 0 },
-  badge: { padding: "0.2rem 0.6rem", borderRadius: "99px", fontSize: "0.7rem", fontWeight: "600", whiteSpace: "nowrap" },
-  spinner: { width: "40px", height: "40px", border: "3px solid #334155", borderTopColor: "#f97316", borderRadius: "50%", animation: "spin 1s linear infinite" },
+const styles = {
+  container: { padding: "2rem" },
+  welcomeSection: { marginBottom: "2rem" },
+  title: { fontSize: "1.75rem", fontWeight: "bold", marginBottom: "0.5rem" },
+  subtitle: { color: "#94a3b8" },
+  statsGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "1.5rem", marginBottom: "2rem" },
+  statCard: { backgroundColor: "#1e293b", padding: "1.5rem", borderRadius: "12px", display: "flex", alignItems: "center", gap: "1rem" },
+  statIcon: { fontSize: "2rem" },
+  statNumber: { fontSize: "1.75rem", fontWeight: "bold", color: "#f97316" },
+  statLabel: { color: "#94a3b8", fontSize: "0.875rem" },
+  secondaryGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "1.5rem" },
+  infoCard: { backgroundColor: "#1e293b", padding: "1.5rem", borderRadius: "12px" },
+  infoTitle: { marginBottom: "1rem", fontSize: "1rem", color: "#f97316" },
+  infoText: { color: "#94a3b8", marginBottom: "1rem", lineHeight: "1.5" },
+  statusList: { display: "flex", flexDirection: "column", gap: "0.75rem" },
+  statusItem: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.5rem 0", borderBottom: "1px solid #334155" },
+  statusBadgePending: { backgroundColor: "rgba(249, 115, 22, 0.2)", color: "#f97316", padding: "0.25rem 0.75rem", borderRadius: "20px", fontSize: "0.875rem" },
+  statusBadgeHired: { backgroundColor: "rgba(16, 185, 129, 0.2)", color: "#10b981", padding: "0.25rem 0.75rem", borderRadius: "20px", fontSize: "0.875rem" },
+  statusBadgeCompleted: { backgroundColor: "rgba(59, 130, 246, 0.2)", color: "#3b82f6", padding: "0.25rem 0.75rem", borderRadius: "20px", fontSize: "0.875rem" },
+  actionBtn: { width: "100%", backgroundColor: "#f97316", color: "white", border: "none", padding: "0.75rem", borderRadius: "8px", cursor: "pointer", marginBottom: "0.75rem", fontWeight: "bold" },
+  actionBtnOutline: { width: "100%", backgroundColor: "transparent", color: "#f97316", border: "1px solid #f97316", padding: "0.75rem", borderRadius: "8px", cursor: "pointer", fontWeight: "bold" },
+  loading: { display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "400px", gap: "1rem" },
+  spinner: { width: "40px", height: "40px", border: "3px solid #334155", borderTopColor: "#f97316", borderRadius: "50%", animation: "spin 1s linear infinite" }
 };
 
-const ss = document.createElement("style");
-ss.textContent = `@keyframes spin { to { transform: rotate(360deg); } }`;
-document.head.appendChild(ss);
+// Add animation
+const styleSheet = document.createElement("style");
+styleSheet.textContent = `
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+`;
+document.head.appendChild(styleSheet);

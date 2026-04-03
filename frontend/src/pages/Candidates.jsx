@@ -53,10 +53,10 @@ export default function Candidates() {
     e.preventDefault();
     try {
       if (editing) {
-        await api.patch(`/recruitment/candidates/${editing.id}/`, form);
+        await api.patch(`/recruitment/candidates/${editing.id}/`, {first_name:form.first_name,last_name:form.last_name,email:form.email,phone:form.phone,position:form.position,department:form.department,status:form.status,skills:form.skills,notes:form.notes});
         showSuccess("✅ Candidate updated successfully!");
       } else {
-        await api.post("/recruitment/candidates/", form);
+        await api.post("/recruitment/candidates/", {first_name:form.first_name,last_name:form.last_name,email:form.email,phone:form.phone,position:form.position,department:form.department,status:form.status,skills:form.skills,notes:form.notes});
         showSuccess("✅ Candidate added successfully!");
       }
       setShowForm(false);

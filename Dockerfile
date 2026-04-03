@@ -21,7 +21,7 @@ COPY . /code
 
 ENV SECRET_KEY "hgkJRjsyCxrcJe62GkMo9CkFvDgB4BCwTuqsJv0dNJsKYKyH6W"
 ENV DEBUG "False"
-ENV DATABASE_URL "postgresql://postgres:mvGCKVyduecgqBlntJlNFglfZSFDhirk@interchange.proxy.rlwy.net:57137/railway"
+
 
 RUN python manage.py collectstatic --noinput
 RUN chmod +x /code/startup.sh

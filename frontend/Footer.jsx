@@ -162,7 +162,7 @@ const styles = {
 const styleSheet = document.createElement("style");
 styleSheet.textContent = `
   .social-link:hover {
-    color: #f97316 !important;
+    color: #b1500b !important;
     transform: translateX(5px);
   }
   .social-link:hover svg {

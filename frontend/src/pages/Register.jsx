@@ -41,7 +41,7 @@ export default function Register() {
         department: form.department,
       });
       
-      showSuccess("✅ Account created successfully! Please login.");
+      showSuccess("✅ Account created successfully! Please login Directly.");
       setTimeout(() => navigate("/login"), 2000);
     } catch (err) {
       if (err.response?.data?.email) {
